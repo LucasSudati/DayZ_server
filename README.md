@@ -5,7 +5,7 @@ Sistema de administração para servidores **DayZ**, desenvolvido em dois compon
 - **DayZ Admin Control In-Game** — mod para acessar uma interface administrativa dentro do jogo.
 - **DayZ Admin Control Desktop** — aplicativo de administração externo, desenvolvido separadamente.
 
-> **Estado do projeto (08/10/2026):** **DayZ Admin Control In-Game v0.3.1 em diagnóstico**. O mod compila e inicia no cliente; a tecla F7 foi comprovadamente detectada antes do cadastro do SteamID64, quando o cliente registrava negação por nível 0. Após cadastrar o SteamID64 no `admins.json` e reiniciar o servidor, F7 ainda não abriu um painel visível; o novo log mostra somente a inicialização do cliente. Ainda não há prova de recebimento do nível 3, de criação do menu ou da causa da falha. **Próxima etapa: versão de diagnóstico antes de alterar arquitetura/interface.**
+> **Estado do projeto (08/10/2026):** a **v0.3.2 do Claude é a base estável de referência nos testes locais**: o menu abriu, houve execução bem-sucedida de geração de item e cura (`heal`). A **v0.3.3 experimental** alterou somente o estilo `Colorable` dos seis painéis de fundo; **os textos continuaram visíveis, mas os fundos não apareceram**. Próxima etapa: **v0.3.4 experimental**, destinada exclusivamente a testar outra forma de renderizar os fundos, sem modificar comandos ou reorganizar a interface. Estabilidade aqui significa referência funcional no ambiente de teste, não lançamento para produção.
 
 ## Objetivo
 
@@ -28,10 +28,10 @@ O desenvolvimento atual prioriza:
 | Nível administrativo recebido no cliente | ✅ Validado |
 | Registro e detecção do atalho **F7** | ✅ Validado |
 | Abertura e fechamento da rotina do menu | ✅ Validado |
-| Exibição correta do painel gráfico | 🧪 Imagens renderizadas nas v0.2.6 e v0.2.7.1; retângulos em teste na v0.2.8 |
+| Exibição correta do painel gráfico | 🧪 Textos visíveis na v0.3.2 e v0.3.3; fundos de painéis continuam ausentes |
 | Cursor ao abrir o menu | ✅ Observado |
-| Navegação por seções e botões | 🧪 Pendente de validação |
-| Comandos administrativos efetivos | ⏳ Não implementados/ativados nesta etapa |
+| Navegação por seções e botões | 🧪 Menu abre na v0.3.2; navegação completa ainda exige validação |
+| Comandos administrativos efetivos | 🧪 Geração de item e cura (`heal`) funcionaram no teste da v0.3.2; demais comandos ainda exigem validação |
 
 Os resultados acima descrevem os testes do ambiente de desenvolvimento; não são uma garantia de compatibilidade com todas as instalações.
 
@@ -146,7 +146,7 @@ Carregue **o mesmo mod e a versão correspondente** no cliente, usando o DayZ La
 4. Pressione **F7** para abrir ou fechar o menu.
 5. Se o cursor surgir mas o painel não aparecer, consulte o diagnóstico abaixo.
 
-O acesso pela tecla F7 e a resposta de nível 3 foram registrados com sucesso em teste. A renderização dos textos e de imagens foi confirmada nas v0.2.6 e v0.2.7.1. A forma retangular definitiva está em teste na **v0.2.8**.
+Na **v0.3.2 funcional**, a abertura do painel e as operações de geração de item e cura foram observadas em jogo. Na **v0.3.3**, os textos permaneceram visíveis, mas os fundos não renderizaram. O histórico das versões v0.2.x abaixo é mantido para referência.
 
 ## Logs e diagnóstico
 
@@ -207,7 +207,10 @@ Confira os arquivos `script_*.log` do cliente e do servidor. Caso haja erros de 
 | v0.2.7.1 | Recuperação baseada em `ImageWidget`; imagem novamente visível, ainda oval. |
 | v0.2.8 | Imageset e textura retangular próprios; **em testes, sem confirmação no jogo**. |
 | v0.3.0 | Nova arquitetura com `UIScriptedMenu`, layout e permissões JSON; erro de compilação por uso de `SetHandler(this)` com tipos incompatíveis. |
-| **v0.3.1** | Compilação e inicialização do cliente confirmadas; F7 detectado no teste com nível 0, depois permanece sem abrir painel visível após cadastro do SteamID64. Causa **não confirmada**. |
+| v0.3.1 | Compilação e inicialização confirmadas; F7/abertura ainda em diagnóstico nesta versão antiga. |
+| **v0.3.2 (Claude)** | **Base funcional preservada**: painel abre, geração de item e cura funcionaram nos testes. Fundos dos painéis não aparecem. |
+| **v0.3.3 (experimental)** | Aplicação de `style Colorable` a seis painéis; textos seguem visíveis, mas o fundo **não renderizou** no teste em jogo. |
+| **v0.3.4 (planejada)** | Experimento de substituição **apenas** dos widgets de background por mecanismo de desenho compatível (candidato: `ImageWidget` com imagem retangular válida), sujeito a validação em jogo. |
 
 ## Próximas etapas
 
@@ -217,6 +220,31 @@ Confira os arquivos `script_*.log` do cliente e do servidor. Caso haja erros de 
 - Adicionar registros de auditoria de ações administrativas.
 - Ampliar ferramentas de gerenciamento de jogadores e operações do servidor.
 - Documentar comandos, permissões e instalação conforme forem implementados.
+
+## Ponto de retomada atual — 08/10/2026
+
+**Pausa do desenvolvimento:** não reorganizar o layout nem alterar comandos até validar a renderização dos fundos.
+
+### O que está confirmado
+- **v0.3.2 do Claude:** arquivada pelo desenvolvedor como referência estável; menu abre; geração de item e comando de cura funcionaram no ambiente testado.
+- **v0.3.3 experimental:** tentou `style Colorable` em seis `PanelWidgetClass` usados como fundo. Resultado observado: **textos corretos; fundos ainda invisíveis**. Isso não prova, isoladamente, que o tipo de widget seja a única causa.
+- Há backups separados da v0.3.2 do Claude e da v0.3.2 anterior do projeto. **Não sobrescrever a referência funcional.**
+
+### Próximo teste — v0.3.4
+1. Partir **exatamente da v0.3.2 funcional do Claude**, preservando scripts, RPCs, permissões e comandos.
+2. Isolar os widgets de fundo no `gui/layouts/dac_menu.layout`; testar uma alternativa visual que realmente desenhe um retângulo (por exemplo, `ImageWidgetClass` com recurso retangular compatível), sem mudar posição dos textos e botões.
+3. Verificar caminhos e empacotamento de `.layout`, `.imageset` e eventuais texturas. **Não considerar que uma textura já é suportada apenas por ter extensão `.edds`.**
+4. Compilar um PBO novo, conferir seu conteúdo, carregar versões correspondentes no cliente e no servidor e verificar dentro do DayZ se aparecem **janela principal, cabeçalho e barra lateral**.
+5. Registrar o resultado antes de qualquer outra mudança. Se falhar, investigar recurso visual, hierarquia, visibilidade e suporte do widget; **não** iniciar um redesenho prematuro.
+
+### Diretrizes visuais aprovadas para depois do teste
+- Seguir a **identidade do launcher oficial de DayZ**: cinza-chumbo escuro, painéis de baixa opacidade, vermelho em elementos de destaque, texto branco/cinza claro e bordas discretas.
+- **Não usar imagem de fundo obrigatória**: o cenário do jogo deve permanecer visível atrás dos painéis.
+- Priorizar **ícones reais, não emojis**, estados e sinais gráficos em vez de instruções longas. Exibir textos detalhados quando forem dados úteis (por exemplo, logs de jogadores), não para explicar botões óbvios.
+- Usar sinais facilmente distinguíveis para sucesso, alerta/erro e indisponibilidade; evitar depender somente de cor quando um ícone ou forma puder reforçar o significado.
+- Após confirmar a renderização, então reorganizar a interface e validar lista de jogadores, teleporte, mensagens, permissões e logs, um recurso por vez.
+
+**Nota histórica:** a seção abaixo “Retomada da investigação — 08/10/2026 (próxima sessão)” documenta o problema **antigo da v0.3.1**, já superado na base funcional v0.3.2; não é mais a próxima tarefa.
 
 ## Retomada da investigação — 08/10/2026 (próxima sessão)
 
@@ -260,7 +288,7 @@ Confira os arquivos `script_*.log` do cliente e do servidor. Caso haja erros de 
 
 Este é um **projeto em desenvolvimento**, não um pacote de administração pronto para produção. Algumas telas e seções são protótipos visuais e **não executam ações administrativas reais**.
 
-Os códigos-fonte, os binários PBO e eventuais instaladores podem ser adicionados ao repositório em etapas futuras. Este README inclui o histórico anterior e o diagnóstico da v0.3.1; a correção da abertura do painel ainda está pendente.
+Os códigos-fonte, os binários PBO e eventuais instaladores podem ser adicionados ao repositório em etapas futuras. Este README preserva o histórico e diagnósticos antigos, mas o ponto de retomada atual é o teste de renderização dos fundos após a v0.3.3.
 
 ---
 
