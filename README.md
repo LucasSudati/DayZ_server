@@ -5,7 +5,7 @@ Sistema de administração para servidores **DayZ**, desenvolvido em dois compon
 - **DayZ Admin Control In-Game** — mod para acessar uma interface administrativa dentro do jogo.
 - **DayZ Admin Control Desktop** — aplicativo de administração externo, desenvolvido separadamente.
 
-> **Estado do projeto (08/10/2026):** o mod In-Game está em desenvolvimento, na **v0.2.4 (em testes)**. O carregamento do mod, o atalho **F7** e a validação de permissão administrativa foram confirmados em testes anteriores. A renderização da interface da v0.2.4 ainda **não foi confirmada**. Os comandos administrativos ainda não devem ser considerados operacionais.
+> **Estado do projeto (08/10/2026):** **v0.2.8 em testes**. O F7, a consulta RPC de permissões e a renderização de textos foram validados. Nas v0.2.6 e v0.2.7.1, o `ImageWidget` exibiu imagens, porém com formatos ovais devido ao sprite circular esticado. A v0.2.8 introduz um imageset e uma textura retangular próprios; **ainda não há confirmação de funcionamento no DayZ**. Comandos administrativos seguem desativados.
 
 ## Objetivo
 
@@ -28,7 +28,7 @@ O desenvolvimento atual prioriza:
 | Nível administrativo recebido no cliente | ✅ Validado |
 | Registro e detecção do atalho **F7** | ✅ Validado |
 | Abertura e fechamento da rotina do menu | ✅ Validado |
-| Exibição correta do painel gráfico | 🧪 Em testes na v0.2.4 |
+| Exibição correta do painel gráfico | 🧪 Imagens renderizadas nas v0.2.6 e v0.2.7.1; retângulos em teste na v0.2.8 |
 | Cursor ao abrir o menu | ✅ Observado |
 | Navegação por seções e botões | 🧪 Pendente de validação |
 | Comandos administrativos efetivos | ⏳ Não implementados/ativados nesta etapa |
@@ -44,8 +44,9 @@ DayZAdminControl/
 ├── config.cpp
 ├── inputs.xml
 ├── gui/
-│   └── layouts/
-│       └── dac_menu.layout
+│   └── imagesets/
+│       ├── dac_solid.imageset
+│       └── dac_solid.edds
 └── scripts/
     ├── 3_Game/
     │   └── DAC_Constants.c
@@ -53,6 +54,7 @@ DayZAdminControl/
     │   ├── DAC_Permissions.c
     │   └── DAC_PlayerRPC.c
     └── 5_Mission/
+        ├── DAC_Menu.c
         ├── DAC_ClientMission.c
         └── DAC_ServerMission.c
 ```
@@ -63,7 +65,8 @@ A lista representa os principais arquivos conhecidos e pode evoluir ao longo das
 
 - **`config.cpp`**: registra o mod, suas dependências e diretórios de scripts.
 - **`inputs.xml`**: registra a ação de teclado usada para abrir o painel.
-- **`gui/layouts/dac_menu.layout`**: estrutura visual do painel administrativo.
+- **`gui/imagesets/dac_solid.imageset`** e **`dac_solid.edds`**: recursos visuais introduzidos na v0.2.8 para tentar renderizar retângulos; carregamento ainda em validação.
+- **`scripts/5_Mission/DAC_Menu.c`**: criação dos widgets e controle do menu no cliente.
 - **`3_Game`**: constantes compartilhadas, incluindo identificadores das mensagens RPC.
 - **`4_World/DAC_Permissions.c`**: consulta do nível de acesso configurado no servidor.
 - **`4_World/DAC_PlayerRPC.c`**: mensagens RPC entre cliente e servidor para autenticação do menu.
@@ -103,9 +106,9 @@ A configuração inicial de permissões é feita em `scripts/4_World/DAC_Permiss
 3. Abra o **DayZ Tools → Addon Builder**.
 4. Selecione a pasta-fonte do mod.
 5. Selecione como destino o **diretório `Addons`**, não um caminho que termine em `.pbo`.
-6. Em **Options → List of files to copy directly**, mantenha os padrões **`*.xml`** e **`*.layout`**. Eles são importantes para empacotar o atalho e o layout do menu.
+6. Em **Options → List of files to copy directly**, mantenha os padrões **`*.xml`**, **`*.imageset`** e **`*.edds`** na v0.2.8. O XML registra o atalho e os dois últimos são recursos visuais; mantenha `*.layout` apenas quando estiver compilando versões antigas que o utilizem.
 7. Gere o PBO.
-8. Caso necessário, abra o PBO no **BankRev** e confirme a presença de `inputs.xml`, `gui/layouts/dac_menu.layout` e dos scripts esperados.
+8. Caso necessário, abra o PBO no **BankRev** e confirme a presença de `inputs.xml`, `gui/imagesets/dac_solid.imageset`, `gui/imagesets/dac_solid.edds` e dos scripts esperados.
 
 Padrão de distribuição:
 
@@ -143,7 +146,7 @@ Carregue **o mesmo mod e a versão correspondente** no cliente, usando o DayZ La
 4. Pressione **F7** para abrir ou fechar o menu.
 5. Se o cursor surgir mas o painel não aparecer, consulte o diagnóstico abaixo.
 
-O acesso pela tecla F7 e a resposta de nível 3 foram registrados com sucesso em teste. A aparência e o funcionamento da janela da **v0.2.4** seguem em validação.
+O acesso pela tecla F7 e a resposta de nível 3 foram registrados com sucesso em teste. A renderização dos textos e de imagens foi confirmada nas v0.2.6 e v0.2.7.1. A forma retangular definitiva está em teste na **v0.2.8**.
 
 ## Logs e diagnóstico
 
@@ -178,7 +181,7 @@ Pontos de verificação:
 - Verificar dimensões, posições, visibilidade, opacidade e hierarquia dos componentes.
 - Revisar os logs após pressionar **F7**.
 
-A **v0.2.4** foi preparada para investigar e corrigir essas questões, mas ainda precisa do resultado de teste em jogo.
+Nas v0.2.6 e v0.2.7.1, o uso de `ImageWidget` com sprite nativo circular permitiu renderizar os fundos, porém deformados. Na v0.2.7, o uso do tipo `PanelWidget` em Enforce Script causou erro de compilação `Bad type 'PanelWidget'`. A v0.2.8 testa textura retangular própria e ainda aguarda validação. **A extensão `.edds` não garante, por si só, que os bytes DDS sejam aceitos pelo DayZ; poderá ser necessária conversão pela ferramenta oficial de texturas.**
 
 ### Atalho não funciona
 
@@ -197,11 +200,16 @@ Confira os arquivos `script_*.log` do cliente e do servidor. Caso haja erros de 
 | v0.2.0–v0.2.1 | Introdução do menu e depuração do atalho F7. |
 | v0.2.2 | Carregamento do `inputs.xml` corrigido; F7 abre a interface inicial. |
 | v0.2.3 | Novo layout visual; cursor abre, mas o painel não foi renderizado no teste. |
-| **v0.2.4** | Correções de dimensões e diagnóstico dos widgets; **aguardando validação no jogo**. |
+| v0.2.4 | Ajustes de dimensões; interface ainda não apareceu no teste. |
+| v0.2.5 | Interface construída por script; textos renderizados, mas fundos ausentes. |
+| v0.2.6 | `ImageWidget` renderizou fundos com sprite circular esticado; teste visual bem-sucedido, geometria inadequada. |
+| v0.2.7 | Tentativa com `PanelWidget`; **falha de compilação** (`Bad type 'PanelWidget'`). |
+| v0.2.7.1 | Recuperação baseada em `ImageWidget`; imagem novamente visível, ainda oval. |
+| **v0.2.8** | Imageset e textura retangular próprios; **em testes, sem confirmação no jogo**. |
 
 ## Próximas etapas
 
-- Validar a renderização completa da v0.2.4.
+- Validar o carregamento da textura retangular da v0.2.8 e corrigir eventual conversão para formato suportado.
 - Garantir foco, cursor, fechamento e navegação sem prejudicar o jogo.
 - Implementar ações administrativas com autorização verificada no servidor.
 - Adicionar registros de auditoria de ações administrativas.
@@ -212,7 +220,7 @@ Confira os arquivos `script_*.log` do cliente e do servidor. Caso haja erros de 
 
 Este é um **projeto em desenvolvimento**, não um pacote de administração pronto para produção. Algumas telas e seções são protótipos visuais e **não executam ações administrativas reais**.
 
-Os códigos-fonte, os binários PBO e eventuais instaladores podem ser adicionados ao repositório em etapas futuras. Este README documenta o estado do trabalho até a v0.2.4.
+Os códigos-fonte, os binários PBO e eventuais instaladores podem ser adicionados ao repositório em etapas futuras. Este README documenta o estado do trabalho até a v0.2.8 (ainda em testes).
 
 ---
 
