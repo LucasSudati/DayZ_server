@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DayZ Server Monitor | Laboratório de coleta</title>
+<style>
+:root{color-scheme:dark;--bg:#08121f;--panel:#12253a;--line:#294763;--accent:#43a9ff;--text:#eaf4ff}
+*{box-sizing:border-box}body{font:16px system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px}
+main{max-width:1050px;margin:auto}h1{margin-bottom:4px}p{color:#bad0e4;line-height:1.5}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+label{display:block;margin:12px 0 6px;font-weight:600}input,select,button{font:inherit;border-radius:8px;padding:11px}
+input,select{background:#081726;border:1px solid #42617c;color:white;width:100%}
+button{background:var(--accent);border:0;color:#001729;font-weight:700;cursor:pointer;margin:10px 8px 0 0}
+button.secondary{background:#294863;color:#fff}button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:#0a1b2d;border-radius:10px;padding:16px}.stat b{font-size:1.5rem;display:block}
+small{color:#a8c4dc}pre{background:#06121f;padding:14px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:340px;overflow:auto}
+.ok{color:#7ee2b0}.bad{color:#ffaaa8}.warn{color:#ffdb8a}
+@media(max-width:650px){body{padding:12px}.row,.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<h1>DayZ Server Monitor</h1>
+<p>Laboratório de coleta via navegador — experimento, não monitoramento oficial validado.</p>
+<section class="card">
+<h2>Consulta HTTP</h2>
+<p>Informe uma URL de API HTTP(S) que devolva JSON. O navegador <strong>não consegue executar consultas UDP Steam A2S</strong>. O acesso depende de CORS e da política da fonte. Não coloque tokens privados na URL.</p>
+<label for="source">Fonte</label>
+<select id="source"><option value="custom">URL personalizada</option><option value="battlemetrics">BattleMetrics — ID de servidor (experimental)</option></select>
+<div id="bmWrap" hidden><label for="bmId">ID numérico do servidor no BattleMetrics</label><input id="bmId" inputmode="numeric" placeholder="ID do servidor na plataforma"></div>
+<div id="urlWrap"><label for="url">Endpoint HTTPS retornando JSON</label><input id="url" type="url" placeholder="https://exemplo.com/api/servidor"></div>
+<div class="row">
+<div><label for="interval">Intervalo de consulta (segundos)</label><input id="interval" type="number" min="5" max="3600" value="30"></div>
+<div><label for="timeout">Tempo limite (segundos)</label><input id="timeout" type="number" min="2" max="60" value="10"></div>
+</div>
+<button id="once">Consultar uma vez</button><button id="start">Iniciar repetição</button><button id="stop" class="secondary" disabled>Parar</button>
+<p id="status" role="status" aria-live="polite">Aguardando consulta.</p>
+</section>
+<section class="card"><h2>Última resposta</h2><div class="stats">
+<div class="stat"><small>Jogadores</small><b id="players">—</b></div>
+<div class="stat"><small>Latência HTTP</small><b id="latency">—</b></div>
+<div class="stat"><small>Última atualização</small><b id="updated">—</b></div>
+</div><p id="details">Sem dados. Valores só aparecem quando a API retornar campos reconhecidos.</p>
+<details><summary>JSON bruto da última resposta</summary><pre id="raw">Nenhuma resposta.</pre></details></section>
+<section class="card"><h2>Registro de testes</h2><button class="secondary" id="clear">Limpar registro</button><button class="secondary" id="export">Exportar CSV</button>
+<pre id="log" aria-live="polite">Nenhum teste realizado.</pre>
+<p><small>Falha de rede/CORS pode aparecer como “Failed to fetch”; o navegador nem sempre permite distinguir a causa. Respostas HTTP com erro são registradas separadamente. Uma falha nunca significa zero jogadores.</small></p>
+</section>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), entries=[];
+let timer=null,busy=false,controller=null;
+$('source').onchange=()=>{const bm=$('source').value==='battlemetrics';$('bmWrap').hidden=!bm;$('urlWrap').hidden=bm};
+function endpoint(){if($('source').value==='battlemetrics'){const id=$('bmId').value.trim();if(!/^\d+$/.test(id))throw Error('Informe um ID numérico válido do BattleMetrics.');return 'https://api.battlemetrics.com/servers/'+id}const url=$('url').value.trim();const parsed=new URL(url);if(parsed.protocol!=='https:')throw Error('Use um endpoint HTTPS.');return parsed.href}
+function record(kind,msg,ms='',players=''){const now=new Date().toISOString();entries.push({now,kind,msg,ms,players});$('log').textContent=entries.slice(-100).map(x=>x.now+' | '+x.kind+' | '+x.msg).join('\n')}
+function number(v){return Number.isFinite(Number(v))&&v!==null&&v!==''?Number(v):null}
+function population(json){const attrs=json?.data?.attributes??json?.attributes??json;const current=number(attrs?.players??attrs?.numplayers??attrs?.playerCount??attrs?.player_count);const max=number(attrs?.maxPlayers??attrs?.maxplayers??attrs?.max_players);return {current,max,name:attrs?.name??attrs?.hostname??null}}
+async function query(){if(busy)return;let url;try{url=endpoint()}catch(e){$('status').textContent=e.message;return}
+busy=true;$('once').disabled=true;controller=new AbortController();const timeout=Math.max(2,Math.min(60,Number($('timeout').value)||10));const timeoutId=setTimeout(()=>controller.abort(),timeout*1000),start=performance.now();
+$('status').textContent='Consultando endpoint HTTPS…';
+try{const response=await fetch(url,{signal:controller.signal,cache:'no-store',headers:{Accept:'application/json'}});const ms=Math.round(performance.now()-start);if(!response.ok)throw Error('HTTP '+response.status+' '+response.statusText);
+const json=await response.json();const p=population(json);$('raw').textContent=JSON.stringify(json,null,2).slice(0,30000);$('players').textContent=p.current===null?'Indisponível':p.current+(p.max===null?'':' / '+p.max);$('latency').textContent=ms+' ms';$('updated').textContent=new Date().toLocaleTimeString('pt-BR');$('details').textContent=(p.name?'Servidor: '+p.name+'. ':'')+(p.current===null?'JSON recebido, mas nenhum campo de população reconhecido.':'População extraída da resposta JSON.');$('status').textContent='Resposta HTTP e JSON recebidos.';record('OK','JSON recebido; jogadores: '+(p.current??'não identificado'),ms,p.current??'');
+}catch(e){const ms=Math.round(performance.now()-start);$('status').textContent='Falha: '+(e.name==='AbortError'?'tempo limite':e.message);record('ERRO',e.name==='AbortError'?'tempo limite':e.message,ms);$('details').textContent='Última consulta falhou; o valor anterior não representa o estado atual.'}
+finally{clearTimeout(timeoutId);controller=null;busy=false;$('once').disabled=false}
+}
+$('once').onclick=query;
+$('start').onclick=()=>{if(timer)return;const seconds=Number($('interval').value);if(!Number.isFinite(seconds)||seconds<5||seconds>3600){$('status').textContent='Use intervalo entre 5 e 3600 segundos.';return}try{endpoint()}catch(e){$('status').textContent=e.message;return}timer=setInterval(query,seconds*1000);$('start').disabled=true;$('stop').disabled=false;query()};
+$('stop').onclick=()=>{clearInterval(timer);timer=null;controller?.abort();$('start').disabled=false;$('stop').disabled=true;$('status').textContent='Repetição interrompida.'};
+$('clear').onclick=()=>{entries.length=0;$('log').textContent='Nenhum teste realizado.'};
+$('export').onclick=()=>{const cell=v=>'"'+String(v??'').replaceAll('"','""')+'"';const csv=[['timestamp','tipo','mensagem','latencia_ms','jogadores'],...entries.map(x=>[x.now,x.kind,x.msg,x.ms,x.players])].map(row=>row.map(cell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dayz-testes.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+</script></body></html>
