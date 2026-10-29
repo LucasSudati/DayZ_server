@@ -80,3 +80,13 @@ Esta árvore é **planejada**; não representa arquivos já implementados.
 ## Projeto anterior
 
 O projeto antigo **DayZ Admin Control** foi preservado na branch [backup-dayz-admin-control](https://github.com/LucasSudati/DayZ_server/tree/backup-dayz-admin-control). O objetivo da branch `main` passa a ser o novo monitor.
+
+---
+
+### Status e atualização do projeto
+
+- **Situação:** Em desenvolvimento — especificação; implementação não validada.
+- **Última revisão desta nota:** 29/10/2026.
+- **Última alteração do código:** não verificada nesta revisão; consulte o histórico de commits para a data exata.
+
+> Esta nota registra a revisão da documentação, não certifica testes nem uma versão estável.
